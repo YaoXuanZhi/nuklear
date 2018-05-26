@@ -1,7 +1,7 @@
 #include "nuklear_gdi.h"
 #include <malloc.h>
 
-void CImGuiWnd::nk_create_image(struct nk_image * image, const char * frame_buffer, const int width, const int height)
+void CImGuiProvider::nk_create_image(struct nk_image * image, const char * frame_buffer, const int width, const int height)
 {
     if (image && frame_buffer && (width > 0) && (height > 0))
     {
@@ -43,7 +43,7 @@ void CImGuiWnd::nk_create_image(struct nk_image * image, const char * frame_buff
     }
 }
 
-void CImGuiWnd::nk_delete_image(struct nk_image * image)
+void CImGuiProvider::nk_delete_image(struct nk_image * image)
 {
     if (image && image->handle.id != 0)
     {
@@ -53,7 +53,7 @@ void CImGuiWnd::nk_delete_image(struct nk_image * image)
     }
 }
 
-void CImGuiWnd::nk_gdi_draw_image(short x, short y, unsigned short w, unsigned short h,
+void CImGuiProvider::nk_gdi_draw_image(short x, short y, unsigned short w, unsigned short h,
 	struct nk_image img, struct nk_color col)
 {
     HBITMAP	hbm = (HBITMAP)img.handle.ptr;
@@ -70,18 +70,18 @@ void CImGuiWnd::nk_gdi_draw_image(short x, short y, unsigned short w, unsigned s
     DeleteDC(hDCBits);
 }
 
-COLORREF CImGuiWnd::convert_color(struct nk_color c)
+COLORREF CImGuiProvider::convert_color(struct nk_color c)
 {
     return c.r | (c.g << 8) | (c.b << 16);
 }
 
-void CImGuiWnd::nk_gdi_scissor(HDC dc, float x, float y, float w, float h)
+void CImGuiProvider::nk_gdi_scissor(HDC dc, float x, float y, float w, float h)
 {
     SelectClipRgn(dc, NULL);
     IntersectClipRect(dc, (int)x, (int)y, (int)(x + w + 1), (int)(y + h + 1));
 }
 
-void CImGuiWnd::nk_gdi_stroke_line(HDC dc, short x0, short y0, short x1,
+void CImGuiProvider::nk_gdi_stroke_line(HDC dc, short x0, short y0, short x1,
     short y1, unsigned int line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -103,7 +103,7 @@ void CImGuiWnd::nk_gdi_stroke_line(HDC dc, short x0, short y0, short x1,
     }
 }
 
-void CImGuiWnd::nk_gdi_stroke_rect(HDC dc, short x, short y, unsigned short w,
+void CImGuiProvider::nk_gdi_stroke_rect(HDC dc, short x, short y, unsigned short w,
     unsigned short h, unsigned short r, unsigned short line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -130,7 +130,7 @@ void CImGuiWnd::nk_gdi_stroke_rect(HDC dc, short x, short y, unsigned short w,
     }
 }
 
-void CImGuiWnd::nk_gdi_fill_rect(HDC dc, short x, short y, unsigned short w,
+void CImGuiProvider::nk_gdi_fill_rect(HDC dc, short x, short y, unsigned short w,
     unsigned short h, unsigned short r, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -146,7 +146,7 @@ void CImGuiWnd::nk_gdi_fill_rect(HDC dc, short x, short y, unsigned short w,
     }
 }
 
-void CImGuiWnd::nk_gdi_fill_triangle(HDC dc, short x0, short y0, short x1,
+void CImGuiProvider::nk_gdi_fill_triangle(HDC dc, short x0, short y0, short x1,
     short y1, short x2, short y2, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -161,7 +161,7 @@ void CImGuiWnd::nk_gdi_fill_triangle(HDC dc, short x0, short y0, short x1,
     Polygon(dc, points, 3);
 }
 
-void CImGuiWnd::nk_gdi_stroke_triangle(HDC dc, short x0, short y0, short x1,
+void CImGuiProvider::nk_gdi_stroke_triangle(HDC dc, short x0, short y0, short x1,
     short y1, short x2, short y2, unsigned short line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -188,7 +188,7 @@ void CImGuiWnd::nk_gdi_stroke_triangle(HDC dc, short x0, short y0, short x1,
     }
 }
 
-void CImGuiWnd::nk_gdi_fill_polygon(HDC dc, const struct nk_vec2i *pnts, int count, struct nk_color col)
+void CImGuiProvider::nk_gdi_fill_polygon(HDC dc, const struct nk_vec2i *pnts, int count, struct nk_color col)
 {
     int i = 0;
     #define MAX_POINTS 64
@@ -204,7 +204,7 @@ void CImGuiWnd::nk_gdi_fill_polygon(HDC dc, const struct nk_vec2i *pnts, int cou
     #undef MAX_POINTS
 }
 
-void CImGuiWnd::nk_gdi_stroke_polygon(HDC dc, const struct nk_vec2i *pnts, int count,
+void CImGuiProvider::nk_gdi_stroke_polygon(HDC dc, const struct nk_vec2i *pnts, int count,
     unsigned short line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -230,7 +230,7 @@ void CImGuiWnd::nk_gdi_stroke_polygon(HDC dc, const struct nk_vec2i *pnts, int c
     }
 }
 
-void CImGuiWnd::nk_gdi_stroke_polyline(HDC dc, const struct nk_vec2i *pnts,
+void CImGuiProvider::nk_gdi_stroke_polyline(HDC dc, const struct nk_vec2i *pnts,
     int count, unsigned short line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -255,7 +255,7 @@ void CImGuiWnd::nk_gdi_stroke_polyline(HDC dc, const struct nk_vec2i *pnts,
     }
 }
 
-void CImGuiWnd::nk_gdi_fill_circle(HDC dc, short x, short y, unsigned short w,
+void CImGuiProvider::nk_gdi_fill_circle(HDC dc, short x, short y, unsigned short w,
     unsigned short h, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -264,7 +264,7 @@ void CImGuiWnd::nk_gdi_fill_circle(HDC dc, short x, short y, unsigned short w,
     Ellipse(dc, x, y, x + w, y + h);
 }
 
-void CImGuiWnd::nk_gdi_stroke_circle(HDC dc, short x, short y, unsigned short w,
+void CImGuiProvider::nk_gdi_stroke_circle(HDC dc, short x, short y, unsigned short w,
     unsigned short h, unsigned short line_thickness, struct nk_color col)
 {
     COLORREF color = convert_color(col);
@@ -285,7 +285,7 @@ void CImGuiWnd::nk_gdi_stroke_circle(HDC dc, short x, short y, unsigned short w,
     }
 }
 
-void CImGuiWnd::nk_gdi_stroke_curve(HDC dc, struct nk_vec2i p1,
+void CImGuiProvider::nk_gdi_stroke_curve(HDC dc, struct nk_vec2i p1,
     struct nk_vec2i p2, struct nk_vec2i p3, struct nk_vec2i p4,
     unsigned short line_thickness, struct nk_color col)
 {
@@ -314,7 +314,7 @@ void CImGuiWnd::nk_gdi_stroke_curve(HDC dc, struct nk_vec2i p1,
     }
 }
 
-void CImGuiWnd::nk_gdi_draw_text(HDC dc, short x, short y, unsigned short w, unsigned short h,
+void CImGuiProvider::nk_gdi_draw_text(HDC dc, short x, short y, unsigned short w, unsigned short h,
     const char *text, int len, GdiFont *font, struct nk_color cbg, struct nk_color cfg)
 {
     int wsize;
@@ -333,7 +333,7 @@ void CImGuiWnd::nk_gdi_draw_text(HDC dc, short x, short y, unsigned short w, uns
     ExtTextOutW(dc, x, y, ETO_OPAQUE, NULL, wstr, wsize, NULL);
 }
 
-void CImGuiWnd::nk_gdi_clear(HDC dc, struct nk_color col)
+void CImGuiProvider::nk_gdi_clear(HDC dc, struct nk_color col)
 {
     COLORREF color = convert_color(col);
     RECT rect = { 0, 0, gdi.width, gdi.height };
@@ -342,12 +342,12 @@ void CImGuiWnd::nk_gdi_clear(HDC dc, struct nk_color col)
     ExtTextOutW(dc, 0, 0, ETO_OPAQUE, &rect, NULL, 0, NULL);
 }
 
-void CImGuiWnd::nk_gdi_blit(HDC dc)
+void CImGuiProvider::nk_gdi_blit(HDC dc)
 {
     BitBlt(dc, 0, 0, gdi.width, gdi.height, gdi.memory_dc, 0, 0, SRCCOPY);
 }
 
-GdiFont* CImGuiWnd::nk_gdifont_create(const char *name, int size)
+GdiFont* CImGuiProvider::nk_gdifont_create(const char *name, int size)
 {
     TEXTMETRICW metric;
     GdiFont *font = (GdiFont*)calloc(1, sizeof(GdiFont));
@@ -361,7 +361,7 @@ GdiFont* CImGuiWnd::nk_gdifont_create(const char *name, int size)
     return font;
 }
 
-float CImGuiWnd::nk_gdifont_get_text_width(nk_handle handle, float height, const char *text, int len)
+float CImGuiProvider::nk_gdifont_get_text_width(nk_handle handle, float height, const char *text, int len)
 {
     GdiFont *font = (GdiFont*)handle.ptr;
     SIZE size;
@@ -378,7 +378,7 @@ float CImGuiWnd::nk_gdifont_get_text_width(nk_handle handle, float height, const
     return -1.0f;
 }
 
-void CImGuiWnd::nk_gdifont_del(GdiFont *font)
+void CImGuiProvider::nk_gdifont_del(GdiFont *font)
 {
     if(!font) return;
     DeleteObject(font->handle);
@@ -386,7 +386,7 @@ void CImGuiWnd::nk_gdifont_del(GdiFont *font)
     free(font);
 }
 
-void CImGuiWnd::nk_gdi_clipbard_paste(nk_handle usr, struct nk_text_edit *edit)
+void CImGuiProvider::nk_gdi_clipbard_paste(nk_handle usr, struct nk_text_edit *edit)
 {
     (void)usr;
     if (IsClipboardFormatAvailable(CF_UNICODETEXT) && OpenClipboard(NULL))
@@ -419,7 +419,7 @@ void CImGuiWnd::nk_gdi_clipbard_paste(nk_handle usr, struct nk_text_edit *edit)
     }
 }
 
-void CImGuiWnd::nk_gdi_clipbard_copy(nk_handle usr, const char *text, int len)
+void CImGuiProvider::nk_gdi_clipbard_copy(nk_handle usr, const char *text, int len)
 {
     if (OpenClipboard(NULL))
     {
@@ -444,7 +444,7 @@ void CImGuiWnd::nk_gdi_clipbard_copy(nk_handle usr, const char *text, int len)
     }
 }
 
-struct nk_context* CImGuiWnd::nk_gdi_init(GdiFont *gdifont, HDC window_dc, unsigned int width, unsigned int height)
+struct nk_context* CImGuiProvider::nk_gdi_init(GdiFont *gdifont, HDC window_dc, unsigned int width, unsigned int height)
 {
     struct nk_user_font *font = &gdifont->nk;
     font->userdata = nk_handle_ptr(gdifont);
@@ -464,7 +464,7 @@ struct nk_context* CImGuiWnd::nk_gdi_init(GdiFont *gdifont, HDC window_dc, unsig
     return &gdi.ctx;
 }
 
-void CImGuiWnd::nk_gdi_set_font(GdiFont *gdifont)
+void CImGuiProvider::nk_gdi_set_font(GdiFont *gdifont)
 {
     struct nk_user_font *font = &gdifont->nk;
     font->userdata = nk_handle_ptr(gdifont);
@@ -473,7 +473,7 @@ void CImGuiWnd::nk_gdi_set_font(GdiFont *gdifont)
     nk_style_set_font(&gdi.ctx, font);
 }
 
-int CImGuiWnd::nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
+int CImGuiProvider::nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch (msg)
     {
@@ -658,14 +658,14 @@ int CImGuiWnd::nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lpa
     return 0;
 }
 
-void CImGuiWnd::nk_gdi_shutdown(void)
+void CImGuiProvider::nk_gdi_shutdown(void)
 {
     DeleteObject(gdi.memory_dc);
     DeleteObject(gdi.bitmap);
     nk_free(&gdi.ctx);
 }
 
-void CImGuiWnd::nk_gdi_render(struct nk_color clear)
+void CImGuiProvider::nk_gdi_render(struct nk_color clear)
 {
     const struct nk_command *cmd;
 

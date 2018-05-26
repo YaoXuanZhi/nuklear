@@ -20,16 +20,14 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-class GdiFont {
-public:
+struct GdiFont {
     nk_user_font nk;
     int height;
     HFONT handle;
     HDC dc;
 };
 
-class GdiCtx {
-public:
+struct GdiCtx {
     HBITMAP bitmap;
     HDC window_dc;
     HDC memory_dc;
@@ -38,7 +36,10 @@ public:
     nk_context ctx;
 } ;
 
-class CImGuiWnd:public CSimWndFramework{
+class CImGuiProvider{
+public:
+    CImGuiProvider(){}
+    virtual ~CImGuiProvider(){}
 protected:
     GdiCtx gdi;
 public:

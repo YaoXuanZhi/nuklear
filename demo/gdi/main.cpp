@@ -5,7 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
-#include "../../contrib/CharsetConvert.h"
+#include <list>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -17,7 +17,7 @@
 #define NK_IMPLEMENTATION
 #define NK_GDI_IMPLEMENTATION
 #include "nuklear_gdi.h"
-
+#include "../../contrib/CharsetConvert.h"
 /* ===============================================================
  *
  *                          EXAMPLE
@@ -51,37 +51,136 @@
   #include "../node_editor.c"
 #endif
 
-//class CAppWnd:public CSimModalDialog{
-//class CAppWnd:public CSimWndFramework{
-class CAppWnd:public CImGuiWnd{
-
-private:
-    GdiFont* font;
-    struct nk_context *ctx;
-    HDC dc;
-    int isloop;
+class CImGuiBase:public CImGuiProvider
+{
 public:
-    CAppWnd():font(NULL)
-        ,ctx(NULL)
-        ,isloop(1)
+    CImGuiBase():m_pCtx(NULL){}
+    virtual ~CImGuiBase(){}
+
+public:
+    virtual void InitUILayout() = 0;
+
+    virtual void CreateImGuiRes() = 0;
+    virtual void ReleaseImGuiRes() = 0;
+
+public:
+    void EnterInputStatus()
     {
+        nk_input_begin(m_pCtx);
     }
-protected:
-    void InitImGui()
+
+    void LeaveInputStatus()
     {
-        dc = GetDC(*this);
+        nk_input_end(m_pCtx);
+    }
+
+protected:
+    struct nk_context *m_pCtx;
+};
+
+class CImGuiMgr{
+public:
+    CImGuiMgr():m_hHostWnd(NULL){}
+private:
+    std::list<CImGuiBase*> m_listImGui;
+    HWND m_hHostWnd;
+
+public:
+    bool HandleWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        bool bRet = false;
+        if (m_listImGui.empty()) return false;
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+        {
+            if((*it)->nk_gdi_handle_event(m_hHostWnd, uMsg, wParam, lParam))
+                bRet = true;
+        }
+        return bRet;
+    }
+
+    void EnterInputStatus()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->EnterInputStatus();
+    }
+
+    void LeaveInputStatus()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->LeaveInputStatus();
+    }
+
+    void CreateImGuiRes()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->CreateImGuiRes();
+    }
+
+    void InitUILayout()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->InitUILayout();
+    }
+
+public:
+    //NOTE:建议在WM_CREATE中执行
+    void AttachHostWnd(HWND hWnd)
+    {
+        m_hHostWnd = hWnd;
+    }
+
+    //NOTE:建议在WM_CREATE中执行
+    void AddImgGuiObject(CImGuiBase * pWnd)
+    {
+        if (!pWnd) return;
+        m_listImGui.push_back(pWnd);
+    }
+
+    //NOTE:建议在退出消息循环后执行
+    void ReleaseImGuiObjs()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+        {
+            CImGuiBase* pWnd = *it;
+            pWnd->ReleaseImGuiRes();
+            delete pWnd;
+            pWnd = NULL;
+        }
+    }
+};
+
+class CImGuiTest:public CImGuiBase
+{
+protected:
+    GdiFont* m_font;
+    HDC m_dc;
+    HWND m_hImGuiWnd;
+
+public:
+    CImGuiTest(HWND hWnd):m_font(NULL) ,m_hImGuiWnd(hWnd){}
+    virtual ~CImGuiTest(){}
+
+    virtual void CreateImGuiRes()
+    {
+        m_dc = GetDC(m_hImGuiWnd);
 
         /* GUI */
         //font = nk_gdifont_create("Arial", 14);
-        font = nk_gdifont_create("微软雅黑", 20);
+        m_font = nk_gdifont_create("微软雅黑", 20);
         //font = nk_gdifont_create("宋体", 20);
-        ctx = nk_gdi_init(font, dc, WINDOW_WIDTH, WINDOW_HEIGHT);
+        m_pCtx = nk_gdi_init(m_font, m_dc, WINDOW_WIDTH, WINDOW_HEIGHT);
     }
 
-    void CreateImGui()
+    virtual void InitUILayout()
     {
         /* GUI */
-        if (nk_begin(ctx, "Demo", nk_rect(50, 50, 200, 200),
+        if (nk_begin(m_pCtx, "Demo", nk_rect(50, 50, 200, 200),
             NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
             NK_WINDOW_CLOSABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
         {
@@ -89,27 +188,27 @@ protected:
             static int op = EASY;
             static int property = 20;
 
-            nk_layout_row_static(ctx, 30, 80, 1);
-            if (nk_button_label(ctx, CharsetConvert::MBCSToUTF8("按钮").c_str()))
+            nk_layout_row_static(m_pCtx, 30, 80, 1);
+            if (nk_button_label(m_pCtx, CharsetConvert::MBCSToUTF8("按钮").c_str()))
                 fprintf(stdout, "button pressed\n");
-            nk_layout_row_dynamic(ctx, 30, 2);
-            if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
-            if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
-            nk_layout_row_dynamic(ctx, 22, 1);
+            nk_layout_row_dynamic(m_pCtx, 30, 2);
+            if (nk_option_label(m_pCtx, "easy", op == EASY)) op = EASY;
+            if (nk_option_label(m_pCtx, "hard", op == HARD)) op = HARD;
+            nk_layout_row_dynamic(m_pCtx, 22, 1);
             //nk_property_int(ctx, "压缩:", 0, &property, 100, 10, 1);
-            nk_property_int(ctx, CharsetConvert::MBCSToUTF8("压缩:").c_str(), 0, &property, 100, 10, 1);
+            nk_property_int(m_pCtx, CharsetConvert::MBCSToUTF8("压缩:").c_str(), 0, &property, 100, 10, 1);
         }
-        nk_end(ctx);
+        nk_end(m_pCtx);
 
         /* -------------- EXAMPLES ---------------- */
 #ifdef INCLUDE_CALCULATOR
-        calculator(ctx);
+        calculator(m_pCtx);
 #endif
 #ifdef INCLUDE_OVERVIEW
-        overview(ctx);
+        overview(m_pCtx);
 #endif
 #ifdef INCLUDE_NODE_EDITOR
-        node_editor(ctx);
+        node_editor(m_pCtx);
 #endif
         /* ----------------------------------------- */
 
@@ -117,31 +216,35 @@ protected:
         nk_gdi_render(nk_rgb(30,30,30));
     }
 
-public:
-    void ReleaseImGui()
+    virtual void ReleaseImGuiRes()
     {
-        nk_gdifont_del(font);
-        ReleaseDC(*this, dc);
+        nk_gdifont_del(m_font);
+        ReleaseDC(m_hImGuiWnd, m_dc);
+        nk_gdi_shutdown();
     }
 
-    // NOTO:这个事件才是此窗口的消息预处理函数
-    virtual bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+};
+
+class CAppWnd:public CSimWndFramework{
+private:
+    int isloop;
+    CImGuiMgr m_imGuiMgr;
+public:
+    CAppWnd():isloop(1)
     {
-        if (nk_gdi_handle_event(*this, uMsg, wParam, lParam))
+    }
+protected:
+    bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        if (m_imGuiMgr.HandleWindowMessage(uMsg, wParam, lParam, lResult))
             return true;
         return false;
     }
 
-    // NOTE:在这个事件处理的是所有窗口消息
-    //virtual BOOL PreTranslateMessage(MSG* pMsg)
-    //{
-    //    if (nk_gdi_handle_event(*this, pMsg->message, pMsg->wParam, pMsg->lParam))
-    //        return TRUE;
-    //    return FALSE;
-    //}
-
     LRESULT OnCreate(WPARAM, LPARAM)
     {
+        m_imGuiMgr.AttachHostWnd(*this);
+        m_imGuiMgr.AddImgGuiObject(new CImGuiTest(*this));
         return FALSE;
     }
 
@@ -154,21 +257,21 @@ public:
 public:
     int MessageLoop()
     {
-        InitImGui();
+        m_imGuiMgr.CreateImGuiRes();
         MSG msg;
         while (isloop)
         {
-            nk_input_begin(ctx); 
+            m_imGuiMgr.EnterInputStatus();
             GetMessage(&msg, NULL, 0, 0);
             //拦截感兴趣的窗口消息
             if (PreTranslateMessage(&msg))
                 continue;
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-            nk_input_end(ctx);
-            CreateImGui();
+            m_imGuiMgr.LeaveInputStatus();
+            m_imGuiMgr.InitUILayout();
         }
-        ReleaseImGui();
+        m_imGuiMgr.ReleaseImGuiObjs();
         return (int)msg.wParam;
     }
 
@@ -194,6 +297,5 @@ int APIENTRY WinMain(HINSTANCE hInstance,
         GetActiveWindow(), NULL, hInstance);
     ShowWindow(myWnd, SW_SHOW);
     myWnd.MessageLoop();
-    //main();
     return 0;
 }
