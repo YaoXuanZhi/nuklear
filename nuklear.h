@@ -279,6 +279,7 @@ extern "C" {
 #define NK_STRING_JOIN(arg1, arg2) NK_STRING_JOIN_DELAY(arg1, arg2)
 
 #ifdef _MSC_VER
+  #pragma warning(disable:4996)
   #define NK_UNIQUE_NAME(name) NK_STRING_JOIN(name,__COUNTER__)
 #else
   #define NK_UNIQUE_NAME(name) NK_STRING_JOIN(name,__LINE__)

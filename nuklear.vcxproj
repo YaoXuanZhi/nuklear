@@ -83,6 +83,7 @@
     <ClCompile Include="contrib\CharsetConvert.cpp" />
     <ClCompile Include="contrib\CSimWndFramework.cpp" />
     <ClCompile Include="demo\gdi\main.cpp" />
+    <ClCompile Include="demo\gdi\nuklear_gdi.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
