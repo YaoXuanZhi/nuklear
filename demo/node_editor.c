@@ -10,6 +10,21 @@
  * In addition adding and removing nodes is quite limited at the
  * moment since it is based on a simple fixed array. If this is to be converted
  * into something more serious it is probably best to extend it.*/
+extern int g_flag;
+
+void TraceStr(const char* lpszFormat, ...)
+{
+    if (lpszFormat != NULL)
+    {
+        va_list args;
+        char szText[2048] = { 0 };
+        va_start(args, lpszFormat);
+        vsprintf(szText, lpszFormat, args);
+        OutputDebugString(szText);
+        va_end(args);
+    }
+}
+
 struct node {
     int ID;
     char name[32];
@@ -121,6 +136,7 @@ static void
 node_editor_link(struct node_editor *editor, int in_id, int in_slot,
     int out_id, int out_slot)
 {
+    TraceStr("------------->node_editor_link\n");
     struct node_link *link;
     NK_ASSERT((nk_size)editor->link_count < NK_LEN(editor->links));
     link = &editor->links[editor->link_count++];
@@ -232,6 +248,7 @@ node_editor(struct nk_context *ctx)
 
                         /* start linking process */
                         if (nk_input_has_mouse_click_down_in_rect(in, NK_BUTTON_LEFT, circle, nk_true)) {
+                            TraceStr("-------------->mouse_down\n");
                             nodedit->linking.active = nk_true;
                             nodedit->linking.node = it;
                             nodedit->linking.input_id = it->ID;
@@ -241,6 +258,8 @@ node_editor(struct nk_context *ctx)
                         /* draw curve from linked node slot to mouse position */
                         if (nodedit->linking.active && nodedit->linking.node == it &&
                             nodedit->linking.input_slot == n) {
+                                if (g_flag)
+                                    TraceStr("-------------->link_draw\n");
                             struct nk_vec2 l0 = nk_vec2(circle.x + 3, circle.y + 3);
                             struct nk_vec2 l1 = in->mouse.pos;
                             nk_stroke_curve(canvas, l0.x, l0.y, l0.x + 50.0f, l0.y,
@@ -256,9 +275,11 @@ node_editor(struct nk_context *ctx)
                         circle.y = node->bounds.y + space * (float)(n+1);
                         circle.w = 8; circle.h = 8;
                         nk_fill_circle(canvas, circle, nk_rgb(100, 100, 100));
-                        if (nk_input_is_mouse_released(in, NK_BUTTON_LEFT) &&
-                            nk_input_is_mouse_hovering_rect(in, circle) &&
-                            nodedit->linking.active && nodedit->linking.node != it) {
+                        int var1st =  nk_input_is_mouse_released(in, NK_BUTTON_LEFT);
+                        int var2nd =  nk_input_is_mouse_hovering_rect(in, circle);
+                        int var3rd =  nodedit->linking.active && nodedit->linking.node != it;
+                        //TraceStr("[%d] %d %d %d\n", var1st, var2nd, var3rd);
+                        if (var1st && var2nd && var3rd) {
                             nodedit->linking.active = nk_false;
                             node_editor_link(nodedit, nodedit->linking.input_id,
                                 nodedit->linking.input_slot, it->ID, n);
@@ -303,6 +324,7 @@ node_editor(struct nk_context *ctx)
 
             /* node selection */
             if (nk_input_mouse_clicked(in, NK_BUTTON_LEFT, nk_layout_space_bounds(ctx))) {
+                TraceStr("选中一个节点\n");
                 it = nodedit->begin;
                 nodedit->selected = NULL;
                 nodedit->bounds = nk_rect(in->mouse.pos.x, in->mouse.pos.y, 100, 200);
@@ -318,6 +340,7 @@ node_editor(struct nk_context *ctx)
 
             /* contextual menu */
             if (nk_contextual_begin(ctx, 0, nk_vec2(100, 220), nk_window_get_bounds(ctx))) {
+                TraceStr("弹出右键菜单\n");
                 const char *grid_option[] = {"Show Grid", "Hide Grid"};
                 nk_layout_row_dynamic(ctx, 25, 1);
                 if (nk_contextual_item_label(ctx, "New", NK_TEXT_CENTERED))

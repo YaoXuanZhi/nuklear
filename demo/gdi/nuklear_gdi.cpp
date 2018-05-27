@@ -1,6 +1,7 @@
 #include "nuklear_gdi.h"
 #include <malloc.h>
 
+int g_flag = 0;
 void CImGuiProvider::nk_create_image(struct nk_image * image, const char * frame_buffer, const int width, const int height)
 {
     if (image && frame_buffer && (width > 0) && (height > 0))
@@ -612,11 +613,14 @@ int CImGuiProvider::nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARA
         break;
 
     case WM_LBUTTONDOWN:
+        OutputDebugStringA("----------------->°´ÏÂ×ó¼ü\n");
         nk_input_button(&gdi.ctx, NK_BUTTON_LEFT, (short)LOWORD(lparam), (short)HIWORD(lparam), 1);
         SetCapture(wnd);
         return 1;
 
     case WM_LBUTTONUP:
+        OutputDebugStringA("----------------->µ¯³ö×ó¼ü\n");
+        g_flag = 1;
         nk_input_button(&gdi.ctx, NK_BUTTON_DOUBLE, (short)LOWORD(lparam), (short)HIWORD(lparam), 0);
         nk_input_button(&gdi.ctx, NK_BUTTON_LEFT, (short)LOWORD(lparam), (short)HIWORD(lparam), 0);
         ReleaseCapture();
