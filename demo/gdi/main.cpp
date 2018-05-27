@@ -54,7 +54,7 @@
 class CImGuiBase:public CImGuiProvider
 {
 public:
-    CImGuiBase():m_pCtx(NULL){}
+    CImGuiBase():m_pCtx(NULL), m_bIsInited(false){}
     virtual ~CImGuiBase(){}
 
 public:
@@ -62,97 +62,24 @@ public:
 
     virtual void CreateImGuiRes() = 0;
     virtual void ReleaseImGuiRes() = 0;
+    virtual bool HandleWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult) = 0;
 
 public:
     void EnterInputStatus()
     {
-        nk_input_begin(m_pCtx);
+        if (m_bIsInited)
+            nk_input_begin(m_pCtx);
     }
 
     void LeaveInputStatus()
     {
-        nk_input_end(m_pCtx);
+        if (m_bIsInited)
+            nk_input_end(m_pCtx);
     }
 
 protected:
     struct nk_context *m_pCtx;
-};
-
-class CImGuiMgr{
-public:
-    CImGuiMgr():m_hHostWnd(NULL){}
-private:
-    std::list<CImGuiBase*> m_listImGui;
-    HWND m_hHostWnd;
-
-public:
-    bool HandleWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
-    {
-        bool bRet = false;
-        if (m_listImGui.empty()) return false;
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-        {
-            if((*it)->nk_gdi_handle_event(m_hHostWnd, uMsg, wParam, lParam))
-                bRet = true;
-        }
-        return bRet;
-    }
-
-    void EnterInputStatus()
-    {
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-            (*it)->EnterInputStatus();
-    }
-
-    void LeaveInputStatus()
-    {
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-            (*it)->LeaveInputStatus();
-    }
-
-    void CreateImGuiRes()
-    {
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-            (*it)->CreateImGuiRes();
-    }
-
-    void InitUILayout()
-    {
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-            (*it)->InitUILayout();
-    }
-
-public:
-    //NOTE:建议在WM_CREATE中执行
-    void AttachHostWnd(HWND hWnd)
-    {
-        m_hHostWnd = hWnd;
-    }
-
-    //NOTE:建议在WM_CREATE中执行
-    void AddImgGuiObject(CImGuiBase * pWnd)
-    {
-        if (!pWnd) return;
-        m_listImGui.push_back(pWnd);
-    }
-
-    //NOTE:建议在退出消息循环后执行
-    void ReleaseImGuiObjs()
-    {
-        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
-            it != m_listImGui.end(); it++)
-        {
-            CImGuiBase* pWnd = *it;
-            pWnd->ReleaseImGuiRes();
-            delete pWnd;
-            pWnd = NULL;
-        }
-    }
+    bool m_bIsInited;
 };
 
 class CImGuiTest:public CImGuiBase
@@ -163,11 +90,17 @@ protected:
     HWND m_hImGuiWnd;
 
 public:
-    CImGuiTest(HWND hWnd):m_font(NULL) ,m_hImGuiWnd(hWnd){}
+    CImGuiTest():m_font(NULL){}
     virtual ~CImGuiTest(){}
+
+    void SetHostWnd(HWND hWnd)
+    {
+        m_hImGuiWnd = hWnd;
+    }
 
     virtual void CreateImGuiRes()
     {
+        m_bIsInited = true;
         m_dc = GetDC(m_hImGuiWnd);
 
         /* GUI */
@@ -223,58 +156,58 @@ public:
         nk_gdi_shutdown();
     }
 
+    virtual bool HandleWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        if(nk_gdi_handle_event(m_hImGuiWnd, uMsg, wParam, lParam))
+            return true;
+        return false;
+    }
 };
 
-class CAppWnd:public CSimWndFramework{
+class CAppWnd: public CSimWndFramework{
 private:
     int isloop;
-    CImGuiMgr m_imGuiMgr;
+    CImGuiTest m_imGui;
 public:
-    CAppWnd():isloop(1)
+    CAppWnd():isloop(1){}
+    virtual ~CAppWnd()
     {
+        m_imGui.ReleaseImGuiRes();
     }
 protected:
-    bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+	virtual BOOL PreTranslateMessage(MSG* pMsg)
     {
-        if (m_imGuiMgr.HandleWindowMessage(uMsg, wParam, lParam, lResult))
+        m_imGui.InitUILayout();
+        return FALSE;
+    }
+
+	virtual void AfterProcessMessage(UINT uMsg, WPARAM, LPARAM)
+    {
+        m_imGui.LeaveInputStatus();
+    }
+
+	virtual bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        m_imGui.EnterInputStatus();
+        if (m_imGui.HandleWindowMessage(uMsg, wParam, lParam, lResult))
             return true;
         return false;
     }
 
     LRESULT OnCreate(WPARAM, LPARAM)
     {
-        m_imGuiMgr.AttachHostWnd(*this);
-        m_imGuiMgr.AddImgGuiObject(new CImGuiTest(*this));
+        m_imGui.SetHostWnd(*this);
+        m_imGui.CreateImGuiRes();
         return FALSE;
     }
 
     LRESULT OnClose(WPARAM, LPARAM)
     {
-        isloop = 0;
+        ::PostQuitMessage(0);
         return FALSE;
     }
 
 public:
-    int MessageLoop()
-    {
-        m_imGuiMgr.CreateImGuiRes();
-        MSG msg;
-        while (isloop)
-        {
-            m_imGuiMgr.EnterInputStatus();
-            GetMessage(&msg, NULL, 0, 0);
-            //拦截感兴趣的窗口消息
-            if (PreTranslateMessage(&msg))
-                continue;
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-            m_imGuiMgr.LeaveInputStatus();
-            m_imGuiMgr.InitUILayout();
-        }
-        m_imGuiMgr.ReleaseImGuiObjs();
-        return (int)msg.wParam;
-    }
-
     BEGIN_MSG_MAP_SIMWNDPROC(CAppWnd)
         MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
         MSG_MAP_SIMWNDPROC(WM_CLOSE, OnClose)
