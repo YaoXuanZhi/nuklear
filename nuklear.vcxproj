@@ -74,6 +74,7 @@
   <ItemGroup>
     <ClInclude Include="contrib\CharsetConvert.h" />
     <ClInclude Include="contrib\CSimWndFramework.h" />
+    <ClInclude Include="contrib\CSpliteWndBase.h" />
     <ClInclude Include="demo\allegro5\KeyboardHandleriOS.h" />
     <ClInclude Include="demo\allegro5\nuklear_allegro5.h" />
     <ClInclude Include="demo\gdi\nuklear_gdi.h" />
@@ -83,6 +84,7 @@
   <ItemGroup>
     <ClCompile Include="contrib\CharsetConvert.cpp" />
     <ClCompile Include="contrib\CSimWndFramework.cpp" />
+    <ClCompile Include="contrib\CSpliteWndBase.cpp" />
     <ClCompile Include="demo\gdi\main.cpp" />
     <ClCompile Include="demo\gdi\nuklear_gdi.cpp" />
   </ItemGroup>

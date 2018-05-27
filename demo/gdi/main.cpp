@@ -18,6 +18,7 @@
 #define NK_GDI_IMPLEMENTATION
 #include "nuklear_gdi.h"
 #include "../../contrib/CharsetConvert.h"
+#include "../../contrib/CSpliteWndBase.h"
 /* ===============================================================
  *
  *                          EXAMPLE
@@ -54,17 +55,38 @@
 class CImGuiBase:public CImGuiProvider
 {
 public:
-    CImGuiBase():m_pCtx(NULL), m_bIsInited(false){}
+    CImGuiBase():m_pCtx(NULL){}
     virtual ~CImGuiBase(){}
 
 public:
     virtual void InitUILayout() = 0;
-
+    virtual void EnterInputStatus() = 0;
+    virtual void LeaveInputStatus() = 0;
     virtual void CreateImGuiRes() = 0;
     virtual void ReleaseImGuiRes() = 0;
     virtual bool HandleWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult) = 0;
 
+protected:
+    struct nk_context *m_pCtx;
+};
+
+class CImGuiTest:public CImGuiBase
+{
+protected:
+    GdiFont* m_font;
+    HDC m_dc;
+    HWND m_hImGuiWnd;
+    bool m_bIsInited;
+
 public:
+    CImGuiTest():m_font(NULL), m_bIsInited(false){}
+    virtual ~CImGuiTest(){}
+
+    void SetHostWnd(HWND hWnd)
+    {
+        m_hImGuiWnd = hWnd;
+    }
+
     void EnterInputStatus()
     {
         if (m_bIsInited)
@@ -75,27 +97,6 @@ public:
     {
         if (m_bIsInited)
             nk_input_end(m_pCtx);
-    }
-
-protected:
-    struct nk_context *m_pCtx;
-    bool m_bIsInited;
-};
-
-class CImGuiTest:public CImGuiBase
-{
-protected:
-    GdiFont* m_font;
-    HDC m_dc;
-    HWND m_hImGuiWnd;
-
-public:
-    CImGuiTest():m_font(NULL){}
-    virtual ~CImGuiTest(){}
-
-    void SetHostWnd(HWND hWnd)
-    {
-        m_hImGuiWnd = hWnd;
     }
 
     virtual void CreateImGuiRes()
@@ -214,6 +215,128 @@ public:
     END_MSG_MAP_SIMWNDPROC(CSimWndFramework)
 };
 
+class CImGuiMgr{
+protected:
+    std::list<CImGuiBase *> m_listImGuiObjs;
+public:
+    void RegisterImGui(CImGuiBase *pObj)
+    {
+        if (!pObj) return;
+        m_listImGuiObjs.push_back(pObj);
+    }
+
+    void DispatchLayout()
+    {
+        for(std::list<CImGuiBase *>::iterator it = m_listImGuiObjs.begin(); 
+            it != m_listImGuiObjs.end(); it++)
+        {
+            CImGuiBase * pObj = *it;
+            if (pObj)
+                pObj->InitUILayout();
+        }
+    }
+}; 
+
+class CImGuiWnd: public CSimWndFramework{
+private:
+    CImGuiTest m_imGui;
+public:
+    CImGuiWnd(){}
+    virtual ~CImGuiWnd()
+    {
+        m_imGui.ReleaseImGuiRes();
+    }
+
+    CImGuiBase *GetImGui()
+    {
+        return &m_imGui;
+    }
+
+protected:
+    virtual void AfterProcessMessage(UINT uMsg, WPARAM, LPARAM)
+    {
+        m_imGui.LeaveInputStatus();
+    }
+
+    virtual bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        m_imGui.EnterInputStatus();
+        if (m_imGui.HandleWindowMessage(uMsg, wParam, lParam, lResult))
+            return true;
+        return false;
+    }
+
+public:
+    LRESULT OnCreate(WPARAM, LPARAM)
+    {
+        m_imGui.SetHostWnd(*this);
+        m_imGui.CreateImGuiRes();
+        return FALSE;
+    }
+
+public:
+    BEGIN_MSG_MAP_SIMWNDPROC(CImGuiWnd)
+        MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
+    END_MSG_MAP_SIMWNDPROC(CSimWndFramework)
+};
+
+class CMainWnd:public CSpliteWndBase
+{
+public:
+    virtual ~CMainWnd(){}
+protected:
+    HWND GetWnd1st(){ return m_hView1st;}
+    HWND GetWnd2nd(){ return m_hView2nd;}
+
+    void CreateSubWindow1st(int x, int y, int nWidth, int nHeight)
+    {
+        DWORD style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE /*| LVS_REPORT*/;
+        m_hView1st.CreateEx(WS_EX_CLIENTEDGE,_T("Window1"), _T("splite1st"), style, x, y, nWidth, nHeight,
+            *this, (HMENU)(UINT_PTR)(1001 + 1), this->GetInstance());
+        ::ShowWindow(m_hView1st, SW_SHOW);
+    }
+
+    void CreateSubWindow2nd(int x, int y, int nWidth, int nHeight)
+    {
+        DWORD style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE /*| LVS_REPORT*/;
+        m_hView2nd.CreateEx(WS_EX_CLIENTEDGE,_T("Window2"), _T("splite2nd"), style, x, y, nWidth, nHeight,
+            *this, (HMENU)(UINT_PTR)(1001 + 2), this->GetInstance());
+        ::ShowWindow(m_hView2nd, SW_SHOW);
+    }
+
+protected:
+    HRESULT OnCreate(WPARAM wParam, LPARAM lParam)
+    {
+        CSpliteWndBase::OnCreate(wParam, lParam);
+        m_hImGuiMgr.RegisterImGui(m_hView1st.GetImGui());
+        m_hImGuiMgr.RegisterImGui(m_hView2nd.GetImGui());
+        return TRUE;
+    }
+
+    HRESULT OnDestory(WPARAM, LPARAM)
+    {
+        PostQuitMessage(0);
+        return TRUE;
+    }
+
+    virtual BOOL PreTranslateMessage(MSG* pMsg)
+    {
+        m_hImGuiMgr.DispatchLayout();
+        return FALSE;
+    }
+
+protected:
+    BEGIN_MSG_MAP_SIMWNDPROC(CMainWnd)
+        MSG_MAP_SIMWNDPROC(WM_DESTROY, OnDestory)
+        MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
+    END_MSG_MAP_SIMWNDPROC(CSpliteWndBase)
+
+private:
+    CImGuiWnd m_hView1st;
+    CImGuiWnd m_hView2nd;
+    CImGuiMgr m_hImGuiMgr;
+};
+
 int APIENTRY WinMain(HINSTANCE hInstance,
                            HINSTANCE hPrevInstance,
                            LPTSTR    lpCmdLine,
@@ -223,7 +346,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = WS_EX_APPWINDOW;
 
-    CAppWnd myWnd;
+    CMainWnd myWnd;
+    //CAppWnd myWnd;
     myWnd.CreateEx(exstyle, _T("NuklearWindowClass"),_T("Nuklear Demo"), style, 
         //0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 
         CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
