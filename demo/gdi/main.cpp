@@ -19,6 +19,7 @@
 #define NK_GDI_IMPLEMENTATION
 #include "nuklear_gdi.h"
 #include "../../contrib/CharsetConvert.h"
+#include "../../contrib/CSpliteWndBase.h"
 #define snprintf _snprintf
 /* ===============================================================
  *
@@ -94,6 +95,34 @@ public:
         for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
             it != m_listImGui.end(); it++)
             (*it)->InitUILayout();
+    }
+
+    void CreateImGuiRes()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->CreateImGuiRes();
+    }
+
+    void ReleaseImGuiRes()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->ReleaseImGuiRes();
+    }
+
+    void EnterInputStatus()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->EnterInputStatus();
+    }
+
+    void LeaveInputStatus()
+    {
+        for(std::list<CImGuiBase*>::iterator it = m_listImGui.begin(); 
+            it != m_listImGui.end(); it++)
+            (*it)->LeaveInputStatus();
     }
 
 public:
@@ -257,21 +286,23 @@ public:
 #else
     int MessageLoop()
     {
-        m_imGuiObj.CreateImGuiRes();
+        //m_imGuiObj.CreateImGuiRes();
+        m_imGuiMgr.CreateImGuiRes();
         MSG msg;
         while (isloop)
         {
-            m_imGuiObj.EnterInputStatus();
+            m_imGuiMgr.EnterInputStatus();
             GetMessage(&msg, NULL, 0, 0);
             //拦截感兴趣的窗口消息
             if (PreTranslateMessage(&msg))
                 continue;
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-            m_imGuiObj.LeaveInputStatus();
-            m_imGuiObj.InitUILayout();
+            m_imGuiMgr.LeaveInputStatus();
+            m_imGuiMgr.InitUILayout();
         }
-        m_imGuiObj.ReleaseImGuiRes();
+        //m_imGuiObj.ReleaseImGuiRes();
+        m_imGuiMgr.ReleaseImGuiRes();
         return (int)msg.wParam;
     }
 #endif
@@ -280,6 +311,125 @@ public:
         MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
         MSG_MAP_SIMWNDPROC(WM_CLOSE, OnClose)
     END_MSG_MAP_SIMWNDPROC(CSimWndFramework)
+};
+
+class CWndBase1st: public CSimWndFramework
+{
+private:
+    CImGuiTest m_imGuiObj;
+public:
+    CWndBase1st()
+    {
+    }
+
+    CImGuiBase *GetImGui()
+    {
+        return &m_imGuiObj;
+    }
+protected:
+    bool BeforeProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult)
+    {
+        if (m_imGuiObj.HandleWindowMessage(uMsg, wParam, lParam, lResult))
+            return true;
+        return false;
+    }
+
+    LRESULT OnCreate(WPARAM, LPARAM)
+    {
+        m_imGuiObj.SetHostWnd(*this);
+        return FALSE;
+    }
+
+    BEGIN_MSG_MAP_SIMWNDPROC(CWndBase1st)
+        MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
+    END_MSG_MAP_SIMWNDPROC(CSimWndFramework)
+};
+
+class CMainWnd:public CSpliteWndBase
+{
+public:
+    CMainWnd()
+        :isloop(1)
+    {
+
+    }
+protected:
+    HWND GetWnd1st(){ return m_hView1st;}
+    HWND GetWnd2nd(){ return m_hView2nd;}
+
+    void CreateSubWindow1st(int x, int y, int nWidth, int nHeight)
+    {
+        DWORD style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE /*| LVS_REPORT*/;
+        m_hView1st.CreateEx(WS_EX_CLIENTEDGE,_T("Window1"), _T("splite1st"), style, x, y, nWidth, nHeight,
+            *this, (HMENU)(UINT_PTR)(1001 + 1), this->GetInstance());
+        ::ShowWindow(m_hView1st, SW_SHOW);
+    }
+
+    void CreateSubWindow2nd(int x, int y, int nWidth, int nHeight)
+    {
+        DWORD style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE /*| LVS_REPORT*/;
+        m_hView2nd.CreateEx(WS_EX_CLIENTEDGE,_T("Window2"), _T("splite2nd"), style, x, y, nWidth, nHeight,
+            *this, (HMENU)(UINT_PTR)(1001 + 2), this->GetInstance());
+        ::ShowWindow(m_hView2nd, SW_SHOW);
+    }
+
+protected:
+    LRESULT OnCreate(WPARAM wParam, LPARAM lParam)
+    {
+        CSpliteWndBase::OnCreate(wParam, lParam);
+        m_imGuiMgr.AddImgGuiObject(m_hView1st.GetImGui());
+        m_imGuiMgr.AddImgGuiObject(m_hView2nd.GetImGui());
+        return FALSE;
+    }
+
+    LRESULT OnClose(WPARAM, LPARAM)
+    {
+        isloop = 0;
+        return FALSE;
+    }
+
+    HRESULT OnDestory(WPARAM, LPARAM)
+    {
+        PostQuitMessage(0);
+        return TRUE;
+    }
+
+public:
+    int MessageLoop()
+    {
+        //m_imGuiObj.CreateImGuiRes();
+        m_imGuiMgr.CreateImGuiRes();
+        MSG msg;
+        while (isloop)
+        {
+            m_imGuiMgr.EnterInputStatus();
+            GetMessage(&msg, NULL, 0, 0);
+            //拦截感兴趣的窗口消息
+            if (PreTranslateMessage(&msg))
+                continue;
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            m_imGuiMgr.LeaveInputStatus();
+            m_imGuiMgr.InitUILayout();
+        }
+        //m_imGuiObj.ReleaseImGuiRes();
+        m_imGuiMgr.ReleaseImGuiRes();
+        return (int)msg.wParam;
+    }
+
+protected:
+    BEGIN_MSG_MAP_SIMWNDPROC(CMainWnd)
+        MSG_MAP_SIMWNDPROC(WM_CLOSE, OnClose)
+        MSG_MAP_SIMWNDPROC(WM_CREATE, OnCreate)
+        MSG_MAP_SIMWNDPROC(WM_DESTROY, OnDestory)
+        //END_MSG_MAP_SIMWNDPROC(CSimWndFramework)
+        END_MSG_MAP_SIMWNDPROC(CSpliteWndBase)
+
+private:
+    CWndBase1st m_hView1st;
+    CWndBase1st m_hView2nd;
+    int isloop;
+    CImGuiMgr m_imGuiMgr;
 };
 
 int APIENTRY WinMain(HINSTANCE hInstance,
@@ -291,7 +441,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = WS_EX_APPWINDOW;
 
-    CAppWnd myWnd;
+    //CAppWnd myWnd;
+    CMainWnd myWnd;
     myWnd.CreateEx(exstyle, _T("NuklearWindowClass"),_T("Nuklear Demo"), style, 
         //0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 
         CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,

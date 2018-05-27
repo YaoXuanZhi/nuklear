@@ -36,6 +36,9 @@
     <ClInclude Include="contrib\CharsetConvert.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="contrib\CSpliteWndBase.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\gdi\main.cpp">
@@ -48,6 +51,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="demo\gdi\nuklear_gdi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="contrib\CSpliteWndBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

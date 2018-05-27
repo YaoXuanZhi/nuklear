@@ -14040,6 +14040,7 @@ nk_input_is_mouse_down(const struct nk_input *i, enum nk_buttons id)
 NK_API int
 nk_input_is_mouse_pressed(const struct nk_input *i, enum nk_buttons id)
 {
+    //OutputDebugStringA("----------->nk_input_is_mouse_pressed\n");
     const struct nk_mouse_button *b;
     if (!i) return nk_false;
     b = &i->mouse.buttons[id];
@@ -14050,6 +14051,7 @@ nk_input_is_mouse_pressed(const struct nk_input *i, enum nk_buttons id)
 NK_API int
 nk_input_is_mouse_released(const struct nk_input *i, enum nk_buttons id)
 {
+    //OutputDebugStringA("----------->nk_input_is_mouse_released\n");
     if (!i) return nk_false;
     return (!i->mouse.buttons[id].down && i->mouse.buttons[id].clicked);
 }
